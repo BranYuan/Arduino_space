@@ -1,79 +1,57 @@
-#define PUL_LEFT 4
-#define EN_LEFT 2
-#define CW_LEFT 3
-#define STEPS_LEFT 1600   //360/1.8*4
+#include "StepMotor.h"
+#include "ModbusSerial.h"
 
-class step_motor
-{
-  
-  public: 
-  unsigned int motor_pin;
-  unsigned int motor_en;
-  unsigned int motor_cw;
-  unsigned int motor_excitation;
-  double motor_speed;
-  int motor_steps;
-  step_motor()
-  {
-    motor_pin = 2;
-    motor_en = 3;
-    motor_cw = 4;
-    motor_speed = 0;    //rps
-    motor_steps = 800; 
-    pinMode(motor_pin,OUTPUT);
-    pinMode(motor_en,OUTPUT);
-    pinMode(motor_cw,OUTPUT);
-  }
-  void start(int goal_speed,unsigned int motor_runtime)
-  {
-    int goal_hz = (int)abs(goal_speed * motor_steps);
-    digitalWrite(motor_en,HIGH);
-    if(goal_speed > 0)
-      digitalWrite(motor_cw,HIGH);
-    else
-      digitalWrite(motor_cw,LOW);
-    tone(motor_pin,goal_hz,motor_runtime);
-    motor_speed = goal_speed;
-  }
-  void start(int goal_speed)
-  {
-    int goal_hz = (int)abs(goal_speed * motor_steps);
-    digitalWrite(motor_en,HIGH);
-    if(goal_speed > 0)
-      digitalWrite(motor_cw,HIGH);
-    else
-      digitalWrite(motor_cw,LOW);
-    tone(motor_pin,goal_hz);
-    motor_speed = goal_speed;
-  }
-  
-};
+#define PUL_LEFT 3
+#define EN_LEFT 2
+#define CW_LEFT 4
+#define CCW_LEFT 5
+#define STEPS_LEFT 1600   //360/1.8*8
+
+
+
 
 step_motor left_motor;
 void setup() {
   // put your setup code here, to run once:
-  left_motor.motor_pin = PUL_LEFT;
-  left_motor.motor_en = EN_LEFT;
-  left_motor.motor_cw = CW_LEFT;
+  Serial.begin(9600);
+  //Serial.println("start");
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  delay(2000);
-  left_motor.start(0.5);
-  delay(2000);
-  left_motor.start(1.5);
-   delay(2000);
-  left_motor.start(2.5);
-  delay(2000);
-  left_motor.start(1.5);
-  delay(2000);
-  left_motor.start(0.5);
-  delay(2000);
-  left_motor.start(-0.5);
-  delay(2000);
-  left_motor.start(-1);
-  delay(2000);
-  left_motor.start(-3);
-
+  std::vector<byte> data_vector;
+  double speed_L;
+  double speed_R;
+  bool receive_flag = false;
+  int data_size = 0;
+  
+  
+  if(Serial.available())
+  {
+    receive_flag = receive_data(data_vector);
+    /*
+    Serial.println("start to receive data");
+    Serial.println(receive_flag);
+    data_size = data_vector.size();
+    for(int i=0; i<data_size; i++)
+    {
+      Serial.println(data_vector[i],HEX);
+    }
+    */
+  }
+  
+  if(receive_flag)
+  {
+    Serial.println(data_vector[8],HEX);
+    Serial.println(data_vector[9],HEX);
+    Serial.println(data_vector[10],HEX);
+    Serial.println(data_vector[11],HEX);
+    speed_L = ((data_vector[8]<<8) + data_vector[9])/60.0/10;
+    speed_R = ((data_vector[10]<<8) + data_vector[11])/60.0/10;
+    Serial.println(speed_L,HEX);
+  }
+  if(abs(speed_L) >=0.1)
+    left_motor.start(speed_L);
+  else
+    left_motor.motor_stop();
+  delay(60);
 }
